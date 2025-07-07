@@ -1,0 +1,74 @@
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #1a1a1a;
+  background-image: linear-gradient(rgba(30,30,30,0.7),rgba(30,30,30,0.7)), url('/tulpars.jpeg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.logo {
+  height: 4em;
+  padding: 1em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+@media (max-width: 600px) {
+  #root {
+    padding: 0.5rem 0.2rem;
+  }
+  body {
+    font-size: 16px;
+    background-attachment: scroll;
+  }
+}
+
+.card {
+  padding: 2em;
+  background: rgba(30,30,30,0.85);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  margin: 1em auto;
+  max-width: 95vw;
+}
+
+.read-the-docs {
+  color: #888;
+}
