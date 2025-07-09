@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import apiService from '../services/api';
+import { auth } from '../services/firebase';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 const AuthContext = createContext();
 
@@ -11,39 +12,22 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE_URL = 'http://192.168.0.10:8080/api';
-
   const login = async (email, password) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await response.json();
-      setCurrentUser(data.user);
-      return data;
-    } catch (error) {
-      throw error;
-    }
+    await signInWithEmailAndPassword(auth, email, password);
+    // Kullanıcı otomatik olarak onAuthStateChanged ile set edilecek
   };
 
-  function logout() {
-    apiService.logout();
+  const logout = async () => {
+    await signOut(auth);
     setCurrentUser(null);
-  }
+  };
 
   useEffect(() => {
-    // Sayfa yüklendiğinde token kontrolü
-    if (apiService.isAuthenticated()) {
-      // Token varsa kullanıcı bilgilerini al
-      // Bu örnekte basitlik için localStorage'dan alıyoruz
-      const userData = localStorage.getItem('userData');
-      if (userData) {
-        setCurrentUser(JSON.parse(userData));
-      }
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+    return unsubscribe;
   }, []);
 
   const value = {

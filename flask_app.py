@@ -112,27 +112,6 @@ def get_all_data():
     
     return jsonify(data)
 
-# Test kullanıcısı ekleme endpoint'i (sadece geliştirme için)
-@app.route('/api/init-test-user', methods=['POST'])
-def init_test_user():
-    conn = sqlite3.connect('tulparsada.db')
-    cursor = conn.cursor()
-    
-    # Test kullanıcısı ekle
-    email = "test@tulparsada.com"
-    password = "123456"
-    hashed_password = hashlib.sha256(password.encode()).hexdigest()
-    
-    try:
-        cursor.execute('INSERT INTO users (email, password, company) VALUES (?, ?, ?)', 
-                      (email, hashed_password, "Tulparsada Test"))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "Test kullanıcısı oluşturuldu"})
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({"success": False, "message": "Kullanıcı zaten mevcut"})
-
 async def notify_clients(data):
     if clients:
         message = json.dumps(data)

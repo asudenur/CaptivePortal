@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import apiService from '../services/api';
+import { db } from '../services/firebase';
+import { collection, addDoc, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import {
   Container,
   Paper,
@@ -157,191 +158,84 @@ export default function MaterialRequest() {
   const [customQuantity, setCustomQuantity] = useState('');
 
   useEffect(() => {
-    loadMaterialRequests();
-  }, []);
+    if (currentUser?.uid) {
+      loadMaterialRequests();
+    }
+    // eslint-disable-next-line
+  }, [currentUser]);
 
   const loadMaterialRequests = async () => {
-    try {
-      const data = await apiService.getMaterialRequests();
-      setRecords(data);
-    } catch (error) {
-      console.error('Malzeme talepleri yüklenemedi:', error);
+    const q = query(collection(db, 'malzemeKayitlari'), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    // Sadece kendi kayıtlarını göster
+    const data = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(rec => rec.userId === currentUser?.uid);
+    setRecords(data);
+  };
+
+  const getUserInfo = async () => {
+    if (!currentUser?.uid) return {};
+    const userDoc = await getDoc(doc(db, 'users_info', currentUser.uid));
+    if (userDoc.exists()) {
+      return userDoc.data();
     }
+    return {};
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMaterial || !quantity) return;
-    
-    try {
-      if (navigator.geolocation) {
+    const userInfo = await getUserInfo();
+    let latitude = "";
+    let longitude = "";
+    if (navigator.geolocation) {
+      await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            
-            const formData = {
-              name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-              company: currentUser?.organization || "Kurum",
-              material: selectedMaterial,
-              amount: Number(quantity),
-              location: `${latitude}, ${longitude}`
-            };
-
-            const response = await fetch('http://192.168.0.10:8080/api/submit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-              setSelectedMaterial('');
-              setQuantity('');
-              loadMaterialRequests();
-            } else {
-              console.error('Malzeme talebi eklenirken hata oluştu');
-            }
+          (position) => {
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+            resolve();
           },
-          async (error) => {
-            console.error('Konum alınamadı:', error);
-            const formData = {
-              name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-              company: currentUser?.organization || "Kurum",
-              material: selectedMaterial,
-              amount: Number(quantity),
-              location: ""
-            };
-
-            const response = await fetch('http://192.168.0.10:8080/api/submit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-              setSelectedMaterial('');
-              setQuantity('');
-              loadMaterialRequests();
-            } else {
-              console.error('Malzeme talebi eklenirken hata oluştu');
-            }
-          }
+          () => resolve()
         );
-      } else {
-        const formData = {
-          name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-          company: currentUser?.organization || "Kurum",
-          material: selectedMaterial,
-          amount: Number(quantity),
-          location: ""
-        };
-
-        const response = await fetch('http://192.168.0.10:8080/api/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-
-        if (response.ok) {
-          setSelectedMaterial('');
-          setQuantity('');
-          loadMaterialRequests();
-        } else {
-          console.error('Malzeme talebi eklenirken hata oluştu');
-        }
-      }
-    } catch (error) {
-      console.error('Malzeme talebi eklenirken hata oluştu:', error);
-      alert('Malzeme talebi eklenirken hata oluştu.');
+      });
     }
+    await addDoc(collection(db, 'malzemeKayitlari'), {
+      firstName: userInfo.firstName || "",
+      lastName: userInfo.lastName || "",
+      latitude,
+      longitude,
+      materialName: selectedMaterial,
+      organization: userInfo.organization || "",
+      quantity: Number(quantity),
+      timestamp: new Date(),
+      userId: currentUser?.uid || ""
+    });
+    setSelectedMaterial('');
+    setQuantity('');
+    loadMaterialRequests();
   };
 
   // Serbest giriş için handler
   const handleCustomSubmit = async (e) => {
     e.preventDefault();
     if (!customMaterial || !customQuantity) return;
-    
-    try {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-            
-            const formData = {
-              name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-              company: currentUser?.organization || "Kurum",
-              material: customMaterial,
-              amount: Number(customQuantity),
-              location: `${latitude}, ${longitude}`
-            };
-
-            const response = await fetch('http://192.168.0.10:8080/api/submit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-              setCustomMaterial('');
-              setCustomQuantity('');
-              loadMaterialRequests();
-            } else {
-              console.error('Malzeme talebi eklenirken hata oluştu');
-            }
-          },
-          async (error) => {
-            console.error('Konum alınamadı:', error);
-            const formData = {
-              name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-              company: currentUser?.organization || "Kurum",
-              material: customMaterial,
-              amount: Number(customQuantity),
-              location: ""
-            };
-
-            const response = await fetch('http://192.168.0.10:8080/api/submit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-              setCustomMaterial('');
-              setCustomQuantity('');
-              loadMaterialRequests();
-            } else {
-              console.error('Malzeme talebi eklenirken hata oluştu');
-            }
-          }
-        );
-      } else {
-        const formData = {
-          name: `${currentUser?.firstName} ${currentUser?.lastName}`,
-          company: currentUser?.organization || "Kurum",
-          material: customMaterial,
-          amount: Number(customQuantity),
-          location: ""
-        };
-
-        const response = await fetch('http://192.168.0.10:8080/api/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
-        });
-
-        if (response.ok) {
-          setCustomMaterial('');
-          setCustomQuantity('');
-          loadMaterialRequests();
-        } else {
-          console.error('Malzeme talebi eklenirken hata oluştu');
-        }
-      }
-    } catch (error) {
-      console.error('Malzeme talebi eklenirken hata oluştu:', error);
-      alert('Malzeme talebi eklenirken hata oluştu.');
-    }
+    const userInfo = await getUserInfo();
+    await addDoc(collection(db, 'malzemeKayitlari'), {
+      firstName: userInfo.firstName || "",
+      lastName: userInfo.lastName || "",
+      latitude: "",
+      longitude: "",
+      materialName: customMaterial,
+      organization: userInfo.organization || "",
+      quantity: Number(customQuantity),
+      timestamp: new Date(),
+      userId: currentUser?.uid || ""
+    });
+    setCustomMaterial('');
+    setCustomQuantity('');
+    loadMaterialRequests();
   };
 
   return (
@@ -587,33 +481,17 @@ export default function MaterialRequest() {
             <TableBody>
               {records.map((rec) => (
                 <TableRow key={rec.id}>
-                  <TableCell>{rec.material_name}</TableCell>
+                  <TableCell>{rec.materialName}</TableCell>
                   <TableCell>{rec.quantity}</TableCell>
-                  <TableCell>{`${rec.first_name} ${rec.last_name}`}</TableCell>
+                  <TableCell>{`${rec.firstName} ${rec.lastName}`}</TableCell>
                   <TableCell>{rec.organization}</TableCell>
                   <TableCell>
-                    {rec.latitude && rec.longitude ? (
-                      <a
-                        href={`https://www.google.com/maps?q=${rec.latitude},${rec.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#1976d2', textDecoration: 'none' }}
-                      >
-                        Konumu Görüntüle
-                      </a>
-                    ) : (
-                      'Konum bilgisi yok'
-                    )}
+                    {rec.latitude && rec.longitude ? `${rec.latitude}, ${rec.longitude}` : "Konum yok"}
                   </TableCell>
                   <TableCell>
-                    {new Date(rec.created_at).toLocaleString('tr-TR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
+                    {rec.timestamp && rec.timestamp.toDate
+                      ? rec.timestamp.toDate().toLocaleString("tr-TR")
+                      : new Date(rec.timestamp).toLocaleString("tr-TR")}
                   </TableCell>
                 </TableRow>
               ))}
