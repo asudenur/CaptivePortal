@@ -1,0 +1,15 @@
+[Unit]
+Description=Captive Portal Service
+After=network.target
+
+[Service]
+Type=simple
+User=jetson
+WorkingDirectory=/opt/captive-portal
+Environment=PATH=/opt/captive-portal/venv/bin
+ExecStart=/opt/captive-portal/venv/bin/python3 flask_app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 
